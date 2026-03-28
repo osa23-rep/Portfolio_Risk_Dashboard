@@ -236,3 +236,4 @@ def query_top_assets_by_weight(n: int = 10) -> pd.DataFrame:
     df   = pd.read_sql_query("SELECT ticker, sector, weight, price FROM assets ORDER BY weight DESC LIMIT ?", conn, params=(n,))
     conn.close()
     return df
+# Track 55 assets across sectors
