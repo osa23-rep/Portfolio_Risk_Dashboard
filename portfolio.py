@@ -237,3 +237,4 @@ def query_top_assets_by_weight(n: int = 10) -> pd.DataFrame:
     conn.close()
     return df
 # Track 55 assets across sectors
+# Volatility, Sharpe ratio, max drawdown metrics
