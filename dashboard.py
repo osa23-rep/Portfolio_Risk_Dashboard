@@ -1,7 +1,9 @@
 """
 Portfolio Risk & Scenario Analysis Dashboard
 Interactive Streamlit dashboard.
-Run with: streamlit run dashboard.py
+
+Run with:
+streamlit run dashboard.py
 """
 
 import streamlit as st
@@ -28,26 +30,15 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Minimal styling only
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
-
-    html, body, [class*="css"] {
-        font-family: 'IBM Plex Sans', sans-serif;
-    }
-
-    h1, h2, h3 {
-        font-family: 'IBM Plex Mono', monospace !important;
-    }
-
     .stDataFrame {
-        font-family: 'IBM Plex Mono', monospace;
-        font-size: 0.82rem;
+        font-size: 0.85rem;
     }
 
     div[data-testid="stMetricValue"] {
-        font-family: 'IBM Plex Mono', monospace;
-        font-size: 1.4rem;
+        font-size: 1.35rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -57,7 +48,7 @@ st.markdown("""
 # ─────────────────────────────────────────────
 
 with st.sidebar:
-    st.markdown("## ⚙️ Controls")
+    st.markdown("## Controls")
 
     n_assets = st.slider(
         "Number of Assets",
@@ -67,7 +58,11 @@ with st.sidebar:
         step=5
     )
 
-    seed = st.number_input("Random Seed", value=42, step=1)
+    seed = st.number_input(
+        "Random Seed",
+        value=42,
+        step=1
+    )
 
     risk_free = st.slider(
         "Risk-Free Rate (%)",
@@ -77,18 +72,19 @@ with st.sidebar:
         step=0.5
     ) / 100
 
-    st.divider()
-
-    st.markdown("**Scenario Shock Range**")
-    shock_min = st.slider("Min Shock (%)", -50, -5, -30)
-    shock_max = st.slider("Max Shock (%)", -5, 30, 20)
-
-    st.caption("Scenario controls are shown for analysis context. Core scenario calculations are generated from the backend model.")
+    st.caption("Risk-free rate is used in the Sharpe Ratio calculation.")
 
     st.divider()
 
-    save_to_db = st.checkbox("Save results to SQL DB", value=False)
-    run_btn = st.button("🔄 Regenerate Portfolio", use_container_width=True)
+    save_to_db = st.checkbox(
+        "Save results to SQL database",
+        value=False
+    )
+
+    run_btn = st.button(
+        "Regenerate Portfolio",
+        use_container_width=True
+    )
 
 # ─────────────────────────────────────────────
 # LOAD DATA
@@ -110,6 +106,14 @@ returns = compute_returns(prices)
 port_ret = portfolio_return(weights, returns)
 metrics = compute_all_metrics(weights, prices[assets])
 
+# Recalculate Sharpe Ratio using selected risk-free rate
+if metrics["annualized_vol"] != 0:
+    metrics["sharpe_ratio"] = (
+        metrics["annualized_return"] - risk_free
+    ) / metrics["annualized_vol"]
+else:
+    metrics["sharpe_ratio"] = 0
+
 # ─────────────────────────────────────────────
 # OPTIONAL SQL SAVE
 # ─────────────────────────────────────────────
@@ -127,15 +131,24 @@ if save_to_db:
 # HEADER
 # ─────────────────────────────────────────────
 
-st.markdown("# 📊 Portfolio Risk & Scenario Analysis Dashboard")
+st.markdown("# Portfolio Risk & Scenario Analysis Dashboard")
+
+st.caption(
+    "Simulated multi-asset portfolio. Portfolio value assumed at $1,000,000. "
+    "Metrics include annualized return, volatility, Sharpe ratio, maximum drawdown, and 95% VaR."
+)
+
 st.markdown(
     f"""
-    This dashboard analyzes a simulated multi-asset portfolio using **risk metrics, scenario analysis,
-    correlations, and rebalancing comparisons**.
+    This dashboard summarizes portfolio performance, downside risk, scenario P&L,
+    asset correlations, and rebalancing results.
 
-    Tracking **{n_assets} assets** across sectors · 3-year simulation · $1M portfolio
+    **Portfolio universe:** {n_assets} assets  
+    **Simulation period:** 3 years  
+    **Selected risk-free rate:** {risk_free:.2%}
     """
 )
+
 st.divider()
 
 # ─────────────────────────────────────────────
@@ -144,11 +157,11 @@ st.divider()
 
 col1, col2, col3, col4, col5 = st.columns(5)
 
-col1.metric("📈 Ann. Return", f"{metrics['annualized_return']:.2%}")
-col2.metric("📉 Volatility", f"{metrics['annualized_vol']:.2%}")
-col3.metric("⚡ Sharpe Ratio", f"{metrics['sharpe_ratio']:.2f}")
-col4.metric("🔻 Max Drawdown", f"{metrics['max_drawdown']:.2%}")
-col5.metric("⚠️ VaR (95%)", f"{metrics['var_95']:.2%}")
+col1.metric("Annualized Return", f"{metrics['annualized_return']:.2%}")
+col2.metric("Volatility", f"{metrics['annualized_vol']:.2%}")
+col3.metric("Sharpe Ratio", f"{metrics['sharpe_ratio']:.2f}")
+col4.metric("Max Drawdown", f"{metrics['max_drawdown']:.2%}")
+col5.metric("VaR 95%", f"{metrics['var_95']:.2%}")
 
 st.divider()
 
@@ -157,10 +170,10 @@ st.divider()
 # ─────────────────────────────────────────────
 
 tab1, tab2, tab3, tab4 = st.tabs([
-    "📈 Performance",
-    "🌪️ Scenario Analysis",
-    "🔗 Correlations & Risk",
-    "⚖️ Rebalancing"
+    "Performance",
+    "Scenario Analysis",
+    "Correlations & Risk",
+    "Rebalancing"
 ])
 
 # ─────────────────────────────────────────────
@@ -175,29 +188,14 @@ with tab1:
 
         cumulative = (1 + port_ret).cumprod()
 
-        fig, ax = plt.subplots(figsize=(10, 4), facecolor="#0f1117")
-        ax.set_facecolor("#0f1117")
-        ax.plot(cumulative.index, cumulative.values, color="#60a5fa", linewidth=2)
-        ax.fill_between(
-            cumulative.index,
-            1,
-            cumulative.values,
-            where=cumulative.values >= 1,
-            alpha=0.15,
-            color="#34d399"
-        )
-        ax.fill_between(
-            cumulative.index,
-            1,
-            cumulative.values,
-            where=cumulative.values < 1,
-            alpha=0.15,
-            color="#f87171"
-        )
-        ax.axhline(1, color="#374151", linewidth=0.8, linestyle="--")
-        ax.tick_params(colors="#9ca3af")
-        ax.spines[:].set_color("#1e2130")
-        ax.set_ylabel("Cumulative Return", color="#9ca3af")
+        fig, ax = plt.subplots(figsize=(10, 4))
+        ax.plot(cumulative.index, cumulative.values, linewidth=2)
+        ax.axhline(1, linewidth=0.8, linestyle="--")
+
+        ax.set_ylabel("Cumulative Return")
+        ax.set_xlabel("Date")
+        ax.set_title("Portfolio Growth Over Time")
+        ax.grid(True, alpha=0.3)
 
         st.pyplot(fig)
         plt.close(fig)
@@ -210,26 +208,29 @@ with tab1:
         top10["Sector"] = top10["Asset"].map(SECTORS)
         top10["Weight"] = top10["Weight"].apply(lambda x: f"{x:.2%}")
 
-        st.dataframe(top10, use_container_width=True, hide_index=True)
+        st.dataframe(
+            top10,
+            use_container_width=True,
+            hide_index=True
+        )
 
     st.subheader("Sector Allocation")
 
     sector_weights = {}
+
     for asset, w in weights.items():
         sector = SECTORS.get(asset, "Other")
         sector_weights[sector] = sector_weights.get(sector, 0) + w
 
-    fig2, ax2 = plt.subplots(figsize=(10, 3), facecolor="#0f1117")
-    ax2.set_facecolor("#0f1117")
-
     sectors = list(sector_weights.keys())
     vals = list(sector_weights.values())
-    colors = plt.cm.Set2(np.linspace(0, 1, len(sectors)))
 
-    bars = ax2.barh(sectors, vals, color=colors, height=0.6)
-    ax2.tick_params(colors="#9ca3af")
-    ax2.spines[:].set_color("#1e2130")
-    ax2.set_xlabel("Weight", color="#9ca3af")
+    fig2, ax2 = plt.subplots(figsize=(10, 3))
+    bars = ax2.barh(sectors, vals, height=0.6)
+
+    ax2.set_xlabel("Portfolio Weight")
+    ax2.set_title("Allocation by Sector")
+    ax2.grid(True, axis="x", alpha=0.3)
 
     for bar, val in zip(bars, vals):
         ax2.text(
@@ -237,7 +238,6 @@ with tab1:
             bar.get_y() + bar.get_height() / 2,
             f"{val:.1%}",
             va="center",
-            color="#9ca3af",
             fontsize=9
         )
 
@@ -250,10 +250,11 @@ with tab1:
 
 with tab2:
     st.subheader("Market Shock Scenario Analysis")
+
     st.markdown(
-        f"""
-        Stress-testing portfolio exposure under simulated market shocks.
-        Sidebar selected range: **{shock_min}% to {shock_max}%**.
+        """
+        This section estimates portfolio-level P&L and ending portfolio value under
+        different simulated market conditions.
         """
     )
 
@@ -265,32 +266,46 @@ with tab2:
         except Exception as e:
             st.warning(f"Scenario save skipped: {e}")
 
-    display_cols = ["Scenario", "Market Shock", "Portfolio P&L", "Portfolio Value", "Return"]
+    display_cols = [
+        "Scenario",
+        "Market Shock",
+        "Portfolio P&L",
+        "Portfolio Value",
+        "Return"
+    ]
+
     display_df = scenarios_df[display_cols].copy()
 
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
+    st.dataframe(
+        display_df,
+        use_container_width=True,
+        hide_index=True
+    )
 
-    st.subheader("P&L Under Each Scenario")
+    st.subheader("Scenario P&L")
 
-    fig3, ax3 = plt.subplots(figsize=(10, 4), facecolor="#0f1117")
-    ax3.set_facecolor("#0f1117")
+    fig3, ax3 = plt.subplots(figsize=(10, 4))
 
-    colors_bar = ["#34d399" if v >= 0 else "#f87171" for v in scenarios_df["raw_pnl"]]
     ax3.bar(
         scenarios_df["Scenario"],
         scenarios_df["raw_pnl"] / 1000,
-        color=colors_bar,
         width=0.6
     )
 
-    ax3.axhline(0, color="#374151", linewidth=0.8)
-    ax3.tick_params(colors="#9ca3af", axis="both")
-    ax3.spines[:].set_color("#1e2130")
-    ax3.set_ylabel("P&L ($000s)", color="#9ca3af")
+    ax3.axhline(0, linewidth=0.8)
+    ax3.set_ylabel("P&L ($000s)")
+    ax3.set_xlabel("Scenario")
+    ax3.set_title("Portfolio Profit and Loss by Scenario")
+    ax3.grid(True, axis="y", alpha=0.3)
 
     plt.xticks(rotation=30, ha="right", fontsize=8)
+
     st.pyplot(fig3)
     plt.close(fig3)
+
+    st.caption(
+        "Positive values represent estimated gains. Negative values represent estimated losses."
+    )
 
 # ─────────────────────────────────────────────
 # TAB 3: CORRELATIONS & RISK
@@ -305,21 +320,29 @@ with tab3:
         top20 = weights.nlargest(min(20, len(weights))).index.tolist()
         corr = correlation_matrix(returns[top20])
 
-        fig4, ax4 = plt.subplots(figsize=(8, 7), facecolor="#0f1117")
-        ax4.set_facecolor("#0f1117")
+        fig4, ax4 = plt.subplots(figsize=(8, 7))
 
-        im = ax4.imshow(corr.values, cmap="RdYlGn", vmin=-1, vmax=1, aspect="auto")
+        im = ax4.imshow(
+            corr.values,
+            vmin=-1,
+            vmax=1,
+            aspect="auto"
+        )
 
         ax4.set_xticks(range(len(top20)))
         ax4.set_yticks(range(len(top20)))
-        ax4.set_xticklabels(top20, rotation=90, fontsize=7, color="#9ca3af")
-        ax4.set_yticklabels(top20, fontsize=7, color="#9ca3af")
+        ax4.set_xticklabels(top20, rotation=90, fontsize=7)
+        ax4.set_yticklabels(top20, fontsize=7)
+        ax4.set_title("Correlation of Top Holdings")
 
         plt.colorbar(im, ax=ax4)
-        ax4.spines[:].set_color("#1e2130")
 
         st.pyplot(fig4)
         plt.close(fig4)
+
+        st.caption(
+            "Higher positive correlations may reduce diversification benefits."
+        )
 
     with col_y:
         st.subheader("Risk Contributions")
@@ -329,21 +352,30 @@ with tab3:
         top_rc.columns = ["Asset", "Risk Contribution"]
         top_rc["Sector"] = top_rc["Asset"].map(SECTORS)
 
-        fig5, ax5 = plt.subplots(figsize=(6, 6), facecolor="#0f1117")
-        ax5.set_facecolor("#0f1117")
+        fig5, ax5 = plt.subplots(figsize=(6, 6))
 
-        colors5 = plt.cm.Oranges(np.linspace(0.4, 0.9, len(top_rc)))
-        ax5.barh(top_rc["Asset"], top_rc["Risk Contribution"], color=colors5, height=0.6)
+        ax5.barh(
+            top_rc["Asset"],
+            top_rc["Risk Contribution"],
+            height=0.6
+        )
 
-        ax5.tick_params(colors="#9ca3af")
-        ax5.spines[:].set_color("#1e2130")
-        ax5.set_xlabel("Risk Contribution", color="#9ca3af")
-        ax5.set_title("Top Risk Contributors", color="#e5e7eb", fontsize=11)
+        ax5.set_xlabel("Risk Contribution")
+        ax5.set_title("Top Risk Contributors")
+        ax5.grid(True, axis="x", alpha=0.3)
 
         st.pyplot(fig5)
         plt.close(fig5)
 
-        st.markdown("*High concentration in top assets may signal diversification gaps.*")
+        st.dataframe(
+            top_rc,
+            use_container_width=True,
+            hide_index=True
+        )
+
+        st.caption(
+            "Large individual risk contributions may indicate concentration risk."
+        )
 
 # ─────────────────────────────────────────────
 # TAB 4: REBALANCING
@@ -351,50 +383,75 @@ with tab3:
 
 with tab4:
     st.subheader("Rebalancing Strategy Comparison")
+
     st.markdown(
         """
-        Comparing portfolio construction approaches to evaluate changes in volatility,
-        drawdown, and risk-adjusted return.
+        This section compares portfolio construction approaches using volatility,
+        Sharpe Ratio, maximum drawdown, and estimated volatility reduction.
         """
     )
 
     rebal_df, vol_reduction = compare_rebalancing(prices[assets], assets)
 
     st.dataframe(
-        rebal_df[["Strategy", "Ann. Return", "Volatility", "Sharpe", "Max DD", "Vol Reduction"]],
+        rebal_df[
+            [
+                "Strategy",
+                "Ann. Return",
+                "Volatility",
+                "Sharpe",
+                "Max DD",
+                "Vol Reduction"
+            ]
+        ],
         use_container_width=True,
         hide_index=True
     )
 
-    st.success(
-        f"Best rebalancing strategy reduced estimated volatility by **{vol_reduction:.1%}** compared with the original portfolio."
+    st.info(
+        f"Best rebalancing strategy reduced estimated volatility by "
+        f"{vol_reduction:.1%} compared with the original portfolio."
     )
 
     strategies = rebal_df["Strategy"].tolist()
     vols = rebal_df["raw_vol"].tolist()
     sharpes = [float(s) for s in rebal_df["Sharpe"].tolist()]
-    colors6 = ["#f87171", "#60a5fa", "#34d399", "#fbbf24"]
 
-    fig6, axes6 = plt.subplots(1, 2, figsize=(12, 4), facecolor="#0f1117")
+    fig6, ax6 = plt.subplots(figsize=(10, 4))
 
-    axes6[0].set_facecolor("#0f1117")
-    axes6[0].bar(strategies, vols, color=colors6, width=0.5)
-    axes6[0].tick_params(colors="#9ca3af")
-    axes6[0].spines[:].set_color("#1e2130")
-    axes6[0].set_ylabel("Annualized Volatility", color="#9ca3af")
-    axes6[0].set_title("Volatility by Strategy", color="#e5e7eb")
-    plt.setp(axes6[0].get_xticklabels(), rotation=15, ha="right")
+    ax6.bar(strategies, vols, width=0.5)
 
-    axes6[1].set_facecolor("#0f1117")
-    axes6[1].bar(strategies, sharpes, color=colors6, width=0.5)
-    axes6[1].tick_params(colors="#9ca3af")
-    axes6[1].spines[:].set_color("#1e2130")
-    axes6[1].set_ylabel("Sharpe Ratio", color="#9ca3af")
-    axes6[1].set_title("Sharpe Ratio by Strategy", color="#e5e7eb")
-    plt.setp(axes6[1].get_xticklabels(), rotation=15, ha="right")
+    ax6.set_ylabel("Annualized Volatility")
+    ax6.set_xlabel("Strategy")
+    ax6.set_title("Volatility by Strategy")
+    ax6.grid(True, axis="y", alpha=0.3)
 
-    plt.tight_layout()
+    plt.xticks(rotation=15, ha="right")
+
     st.pyplot(fig6)
     plt.close(fig6)
 
-st.caption("Built with Python, pandas, NumPy, Matplotlib, SQL, and Streamlit.")
+    fig7, ax7 = plt.subplots(figsize=(10, 4))
+
+    ax7.bar(strategies, sharpes, width=0.5)
+
+    ax7.set_ylabel("Sharpe Ratio")
+    ax7.set_xlabel("Strategy")
+    ax7.set_title("Sharpe Ratio by Strategy")
+    ax7.grid(True, axis="y", alpha=0.3)
+
+    plt.xticks(rotation=15, ha="right")
+
+    st.pyplot(fig7)
+    plt.close(fig7)
+
+# ─────────────────────────────────────────────
+# FOOTER
+# ─────────────────────────────────────────────
+
+st.divider()
+
+st.caption(
+    "Built with Python, pandas, NumPy, Matplotlib, SQL, and Streamlit. "
+    "Analysis uses simulated price data and is intended for educational portfolio risk modeling."
+)
