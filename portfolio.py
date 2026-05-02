@@ -47,13 +47,10 @@ SCENARIOS = {
 
 DB_PATH = "portfolio.db"
 
-
 def generate_price_data(n_days: int = 756) -> pd.DataFrame:
     """
     Generate simulated daily price data for all assets.
-
-    This version avoids the length mismatch error by making sure:
-    len(price_path) == len(dates)
+    Makes sure each asset has exactly the same number of prices as dates.
     """
 
     dates = pd.date_range(
@@ -62,7 +59,7 @@ def generate_price_data(n_days: int = 756) -> pd.DataFrame:
         freq="B"
     )
 
-    prices = {}
+    price_data = {}
 
     for asset in ASSETS:
         mu = np.random.uniform(0.0003, 0.0012)
@@ -72,14 +69,19 @@ def generate_price_data(n_days: int = 756) -> pd.DataFrame:
         daily_returns = np.random.normal(
             loc=mu,
             scale=sigma,
-            size=n_days
+            size=len(dates)
         )
 
         price_path = start_price * np.cumprod(1 + daily_returns)
 
-        prices[asset] = price_path
+        # Safety check: force exact same length as dates
+        price_data[asset] = price_path[:len(dates)]
 
-    return pd.DataFrame(prices, index=dates)
+    df = pd.DataFrame(price_data)
+
+    df.index = dates
+
+    return df
 
 
 def generate_weights(assets: list = None) -> pd.Series:
