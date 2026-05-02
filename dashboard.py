@@ -93,9 +93,15 @@ with st.sidebar:
 @st.cache_data
 def load_data(seed_val, n):
     np.random.seed(seed_val)
+
     prices = generate_price_data()
-    assets = ASSETS[:n]
+
+    # Randomly select assets from the full universe instead of taking the first n.
+    # This avoids bias toward tech-heavy names at the beginning of the ASSETS list.
+    assets = np.random.choice(ASSETS, size=n, replace=False).tolist()
+
     weights = generate_weights(assets)
+
     return prices, weights, assets
 
 if run_btn:
@@ -243,6 +249,11 @@ with tab1:
 
     st.pyplot(fig2)
     plt.close(fig2)
+
+    st.caption(
+        "Sector allocation helps identify concentration risk. "
+        "A portfolio with too much exposure to one sector may be less diversified."
+    )
 
 # ─────────────────────────────────────────────
 # TAB 2: SCENARIO ANALYSIS
